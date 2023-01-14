@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { KeycloakService } from 'keycloak-angular';
 import { KeycloakProfile, KeycloakTokenParsed } from 'keycloak-js';
+import { sessionStorageItems } from './auth.constants';
 import { Realm, UserDetails } from './auth.interfaces';
 
 @Injectable({
@@ -79,21 +80,39 @@ export class AuthService {
       initOptions: {
         onLoad: 'check-sso',
         silentCheckSsoRedirectUri: window.location.origin + '/assets/silent-check-sso.html',
+        scope: "openid profile email offline_access",
+
       },
     });
+  }
+
+  public getKeycloakInstancesFromCache() : Promise<boolean>{
+    const currentRealmAsString: (string | null) = sessionStorage.getItem(sessionStorageItems.REALM_OBJ)
+
+    if (!currentRealmAsString)
+         return Promise.resolve(false)
+
+    const realm: Realm = JSON.parse(currentRealmAsString);
+
+    return this.initializeKeycloak(realm);
   }
   
 
   public login(realm: Realm): void {
+    debugger
+    const realmAsString = JSON.stringify(realm);
+    sessionStorage.setItem(sessionStorageItems.REALM_OBJ, realmAsString)
     this.initializeKeycloak(realm)
-      .then(() => {
-
+      .then((status) => {
+    this.initializeKeycloak(realm)
+        console.log("initializeKeycloak  status", status)
         this._keycloakInstance.login({
           action: "login",
           redirectUri: window.location.origin + realm.urlCallback
+          
         })
 
-      })
+      }).catch(console.error)
   }
 
   public logut() {
@@ -149,13 +168,15 @@ export class AuthService {
         })
         .then(() => this.tryGetToken())
         .then(() => {
+          
           this._userDetails = {
             isLoggedIn: this._isLoggedIn,
             isTokenExpired: this.isTokenExpired,
             realm: this.currentRealm,
             roles: this.roles,
             userProfile: this._UserProfile,
-            tokenParsed: this.parseJwt(this._token)
+            tokenParsed: this.parseJwt(this._token),
+            token: this._token
           }
           
           // sessionStorage.setItem('token', JSON.stringify(this._token));

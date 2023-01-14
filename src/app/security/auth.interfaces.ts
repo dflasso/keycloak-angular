@@ -16,4 +16,5 @@ export interface UserDetails {
     userProfile?: KeycloakProfile,
     tokenParsed?: KeycloakTokenParsed,
     roles?: string[]
+    token?: string
 }
